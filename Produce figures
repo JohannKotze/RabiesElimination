@@ -1,0 +1,203 @@
+
+library(ggplot2)
+library(dplyr)
+library(plyr) #for function ddply
+##################################################################################################################
+#
+#
+#                             Produce Figures 1-14                                                               #         
+#
+#
+#################################################################################################################
+##   Make sure you have binData loaded into memory (from S5_Script where it is named binData) 
+binData <- read.csv("binData.csv", header = TRUE)
+head(binData)
+str(binData)
+
+#It could be necessary to remove an extra numbering column at the start
+x<- binData %>% select(-1) #remove excess row numbering
+head(x)
+binData <-x
+rm(x)
+head(binData)
+
+models <- ddply(binData, ~
+                  Population+Fecundity+Infectivity+
+                  Exposure_survival+Initial_immunity+In_migration+Incidence,
+                summarise,
+                Transmission = mean(Observed),Regression = mean(Predicted))
+head(models)
+summary(models)
+unique(models$Population)
+unique(models$Infectivity)
+unique(models$Initial_immunity)
+unique(models$Incidence)
+unique(models$In_migration)
+
+labels <- c("0" = "No immunity", "0.1" = "10% immune", "0.2" = "20% immune", "0.3" = "30% immune",
+            "0.4" = "40% immune", "0.5" = "50% immune", "0.6" = "60% immune",
+            "0.7" = "70% immune", "0.8" = "80% immune", "0.9" = "90% immune",
+            "1" = "All immune")
+
+#set default values
+defFec <- 1
+defInf <- 1
+defExp <- 0
+defMigr <- 0
+defInc <- 0.01
+defPop <- 5400
+defImm <- 0.3
+
+scaleFUN <- function(x) sprintf("%.3f", x) #used for rounding
+###############################
+#       population            #
+###############################
+ggplot(models[models$Fecundity==defFec & models$Infectivity==defInf & 
+                models$Exposure_survival==defExp &  models$In_migration==defMigr &
+                models$Incidence==defInc,],
+       aes(x=Population,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="Population size",y="P(epidemic elimination)")+
+  scale_x_log10(breaks=unique(models$Population))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(200,16200),ylim=c(0,1))
+
+
+ggplot(binData,aes(y=Predicted,x=Population,group=Population))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="Population size (log-scale)")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_log10(breaks=unique(binData$Population))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+
+###############################
+#       infectivity           #
+###############################
+ggplot(models[models$Fecundity==defFec & models$Population==defPop & 
+                models$Exposure_survival==defExp &  models$In_migration==defMigr &
+                models$Incidence==defInc,],
+       aes(x=Infectivity,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="Infectivity factor",y="P(epidemic elimination)")+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(0.5,1.5),ylim=c(0,1))
+
+ggplot(binData,aes(y=Predicted,x=Infectivity,group=Infectivity))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="Infectivity factor")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_continuous(breaks = unique(binData$Infectivity))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+
+
+###############################
+#       fecundity             #
+###############################
+ggplot(models[models$Infectivity==defInf & models$Population==5400 & 
+                models$Exposure_survival==defExp &  models$In_migration==defMigr &
+                models$Incidence==defInc,],
+       aes(x=Fecundity,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="Fecundity factor",y="P(epidemic elimination)")+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(0.5,1.5),ylim=c(0,1))
+
+ggplot(binData,aes(y=Predicted,x=Fecundity,group=Fecundity))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="Fecundity factor")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_continuous(breaks = unique(binData$Fecundity))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+
+###############################
+#       In-migration          #
+###############################
+ggplot(models[models$Infectivity==defInf & models$Population==defPop & 
+                models$Exposure_survival==defExp &  models$Fecundity==defFec &
+                models$Incidence==defInc,],
+       aes(x=In_migration,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="In-migration",y="P(epidemic elimination)")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(0,0.1),ylim=c(0,1))
+
+ggplot(binData,aes(y=Predicted,x=In_migration,group=In_migration))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="In-migration")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_continuous(breaks = unique(binData$In_migration))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+###############################
+#       Exposure survival     #
+###############################
+ggplot(models[models$Infectivity==defInf & models$Population==defPop & 
+                models$In_migration==defMigr &  models$Fecundity==defFec &
+                models$Incidence==defInc,],
+       aes(x=Exposure_survival,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="P(survive exposure to virus)",y="P(epidemic elimination)")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(0,0.001),ylim=c(0,1))
+
+ggplot(binData,aes(y=Predicted,x=Exposure_survival,group=Exposure_survival))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="P(survive exposure to virus)")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_continuous(breaks = unique(binData$Exposure_survival))+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+
+###############################
+#       Incidence             #
+###############################
+ggplot(models[models$Infectivity==defInf & models$Population==defPop & 
+                models$In_migration==defMigr &  models$Fecundity==defFec &
+                models$Exposure_survival==defExp,],
+       aes(x=Incidence,y=Transmission))+
+  geom_point(aes(y=Transmission),size=3,colour="red",shape=1,alpha=0.8,show.legend = TRUE)+
+  geom_line(aes(y=Regression),size=1,colour="blue",show.legend = TRUE)+
+  labs(linetype="Immunity",x="Annualised initial incidence",y="P(epidemic elimination)")+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))+
+  coord_cartesian(xlim = c(0,0.03),ylim=c(0,1))
+
+
+ggplot(binData,aes(y=Predicted,x=Incidence,group=Incidence))+
+  geom_boxplot(size=0.7,outlier.shape=1,outlier.size=0.7,outlier.color = "darkgrey")+
+  labs(y="P(epidemic elimination)",x="Annualised initial incidence")+ 
+  theme(axis.text.x = element_text(angle = 90,size=8))+
+  scale_x_log10(breaks = unique(binData$Incidence),labels=scaleFUN)+
+  facet_wrap(~Initial_immunity,nrow=3,labeller=labeller(Initial_immunity = labels))
+
+###############################
+#       Interaction plot      #
+###############################
+labels2 <- c("0.5" = "Infectivity = 0.5","0.75" = "Infectivity = 0.75","1" = "Infectivity = 1",
+             "1.25" = "Infectivity = 1.25","1.5" = "Infectivity = 1.5")
+
+ggplot(binData[binData$Initial_immunity==defImm & binData$In_migration==defMigr &
+                  binData$Exposure_survival==defExp & binData$Fecundity==defFec,], aes(x=Population,y=Incidence))+
+  geom_tile(aes(fill=Predicted))+
+  scale_fill_gradient(low="white", high="blue") +theme_test()+
+  scale_y_log10(breaks=unique(binData$Incidence),labels=scaleFUN)+
+  scale_x_log10(breaks = unique(binData$Population))+
+  facet_wrap(~Infectivity,ncol=2,labeller=labeller(Infectivity = labels2),drop=FALSE)+
+  labs(x="Population size (log-scale)",y="Annualised initial incidence (log-scale)")+
+  theme(legend.key.height = unit(1, 'cm'))
+
+ggplot(binData[binData$Predicted>0 & binData$Initial_immunity==defImm & 
+                  binData$Incidence==defInc & binData$In_migration==defMigr &
+                  binData$Exposure_survival==defExp,], aes(x=Population,y=Fecundity))+
+  geom_tile(aes(fill=Predicted))+
+  scale_fill_gradient(low="white", high="blue") +theme_test()+
+  scale_x_log10(breaks = unique(binData$Population))+
+  facet_wrap(~Infectivity,ncol=2,labeller=labeller(Infectivity = labels2),drop=FALSE)+
+  labs(x="Population size (log-scale)",y="Fecundity factor")+
+  theme(legend.key.height = unit(1, 'cm'))
+
+
