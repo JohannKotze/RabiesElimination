@@ -1,0 +1,97 @@
+
+##################################################################################################################
+#
+#
+#                             import results of transmission model and prepare data for analysis.               #         
+#
+#
+#################################################################################################################
+paramcombos <- read.csv("paramCombos.csv", header = TRUE)
+head(paramcombos)
+summary(paramcombos)
+str(paramcombos)
+
+simulationData <- read.csv("simulationData.csv", header = TRUE)
+head(simulationData)
+summary(simulationData)
+str(simulationData)
+
+##################################################################################################################
+#
+#
+#                   combine the parameter combinations and transmission model results into one dataset          #         
+#
+#
+#################################################################################################################
+
+BEdata <- cbind(paramcombos[,c(3:9)],simulationData[,c(4:6)])
+head(BEdata)
+dim(BEdata)
+BEdata[c(10:30),]
+
+##################################################################################################################
+#
+#
+#           Count extinction events and count successes
+#
+#
+#################################################################################################################
+BEextinct <- BEdata[BEdata$qExtinct1>0,]
+write.csv(BEextinct, 'S1_Table.csv')
+table(BEextinct$Population)
+table(BEextinct$Incidence)
+table(BEextinct$Initial_immunity)
+
+summary(BEextinct)
+str(BEextinct)
+head(BEextinct)
+sum(BEdata$qExtinct1)
+sum(BEdata$qExtinct1)/nrow(BEdata) #calculate the extinction rate
+summary(BEdata$Population)
+summary(BEdata[BEdata$qExtinct1>0,]$Population)
+
+sum(BEdata[BEdata$Population==200,]$qExtinct1)/nrow(BEdata[BEdata$Population==200,]) #maximum extinction rate at smallest Population
+sum(BEdata[BEdata$Infectivity==1.5,]$qExtinct1)/nrow(BEdata[BEdata$Infectivity==1.5,]) #maximum extinction rate at highest infectivity
+sum(BEdata[BEdata$Initial_immunity==0,]$qExtinct1)/nrow(BEdata[BEdata$Initial_immunity==0,]) #maximum extinction rate at no immunity
+sum(BEdata[BEdata$Initial_immunity==0.1,]$qExtinct1)/nrow(BEdata[BEdata$Initial_immunity==0,]) #maximum extinction rate at no immunity
+
+sum(BEdata$qElimWithDogs1) # successes
+sum(BEdata$qNoElimWithDogs1) # failures
+
+##################################################################################################################
+#
+#
+#           Transform to a binary dataset
+#
+#
+#################################################################################################################
+# The original dataset does not have one line for each iteration, 
+# instead it has all the results for one unique combination of parameters in one line.
+# Expand the dataset to have one line for each iteration:
+
+#install.packages("splitstackshape")
+library(splitstackshape) #required for expand.rows function that provides one line for each iteration
+
+binData <- BEdata[BEdata$qElimWithDogs1>0,] #select all the successes
+binData <- expandRows(binData, "qElimWithDogs1",drop=FALSE)
+binData$Observed <-1 #"Observed" shall be the variable representing a successful elimination event in the transmission model. "Predicted" shall be used for the regression model
+summary(binData)
+
+noSucc <- BEdata[BEdata$qNoElimWithDogs1>0,] #select all the failures
+noSucc <- expandRows(noSucc, "qNoElimWithDogs1",drop=FALSE)
+noSucc$Observed <-0
+
+binData <- rbind(binData,noSucc) #combine the successes and failures back into one data.frame
+head(binData)
+binData[c(20:40),] #inspect a sample
+binData <- binData[,c(1:7,11)] #drop unused columns
+binData[c(20:40),] #inspect a sample
+summary(binData)
+dim(binData)
+#end of transform to binary dataset
+
+write.csv(binData, 'binData.csv')
+
+
+
+       
