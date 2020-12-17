@@ -1,0 +1,179 @@
+library(MASS)#for stepAIC function
+library(ggplot2)#for scatterplots
+library(plyr) #for ddply
+
+##################################################################################################################
+#
+#
+#                             define regression models                                                           #         
+#
+#
+#################################################################################################################
+
+
+head(binData) #Make sure you have binData loaded into memory (from S3_Script) 
+
+##############################
+## Model 1: linear           #
+##############################
+#set up a basic first order logistic regression model
+mdl.1 <-glm(Observed~Population + Fecundity + Infectivity +
+                Exposure_survival + Initial_immunity+
+                In_migration + Incidence,
+              family =binomial(link = 'logit'),data=binData)
+summary(mdl.1)
+mdl.1$rank
+
+binData$Mdl1 <- predict(mdl.1,binData,type="response")
+head(binData)
+
+models.Mdl1 <- ddply(binData, ~
+                  Population+Fecundity+Infectivity+
+                  Exposure_survival+Initial_immunity+In_migration+Incidence,
+                summarise,
+                Transmission = mean(Observed),Regression = mean(Mdl1))
+
+head(binData)
+###################################
+#### evalute scatter plots       ##
+###################################
+labels <- c("0" = "No immunity", "0.1" = "10% immune", "0.2" = "20% immune", "0.3" = "30% immune",
+            "0.4" = "40% immune", "0.5" = "50% immune", "0.6" = "60% immune",
+            "0.7" = "70% immune", "0.8" = "80% immune", "0.9" = "90% immune",
+            "1" = "All immune")
+with(models.Mdl1,ggplot(models.Mdl1[Fecundity==defFec & Infectivity==defInf & 
+                                      Exposure_survival==defExp & In_migration==defMigr &
+                                      Incidence==defInc & Initial_immunity==defImm,],
+                        aes(x=Population,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Population size",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(200,16200),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Fecundity==defFec & 
+                                      Exposure_survival==defExp & In_migration==defMigr &
+                                      Incidence==defInc & Initial_immunity==defImm,],
+                        aes(x=Infectivity,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Infectivity",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0.5,1.5),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Infectivity==defInf & 
+                                      Exposure_survival==defExp & In_migration==defMigr &
+                                      Incidence==defInc & Initial_immunity==defImm,],
+                        aes(x=Fecundity,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Fecundity",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0.5,1.5),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Infectivity==defInf & 
+                                      Fecundity==defFec & Exposure_survival==defExp &
+                                      Incidence==defInc & Initial_immunity==defImm,],
+                        aes(x=In_migration,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="In-migration",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0,0.1),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Infectivity==defInf & 
+                                      Fecundity==defFec & In_migration==defMigr &
+                                      Incidence==defInc & Initial_immunity==defImm,],
+                        aes(x=Exposure_survival,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Exposure survival",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0,0.001),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Infectivity==defInf & 
+                                      Fecundity==defFec & In_migration==defMigr &
+                                      Exposure_survival==defExp & Initial_immunity==defImm,],
+                        aes(x=Incidence,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Incidence",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0,0.03),ylim=c(0,1)))
+
+with(models.Mdl1,ggplot(models.Mdl1[Population==defPop & Infectivity==defInf & 
+                                      Fecundity==defFec & In_migration==defMigr &
+                                      Exposure_survival==defExp & Incidence==defInc,],
+                        aes(x=Initial_immunity,y=Transmission))+
+       geom_point(aes(y=Transmission),size=3,colour="red",shape=16)+
+       labs(linetype="Immunity",x="Immunity",y="P(epidemic elimination)")+
+       coord_cartesian(xlim = c(0,1),ylim=c(0,1)))
+##############################
+## Model 2: quadratic terms  #
+##############################
+mdl.2 <-glm(Observed~Population+I(Population^2)+
+                  Fecundity+I(Fecundity^2)+
+                  Infectivity+I(Infectivity^2)+
+                  Exposure_survival+I(Exposure_survival^2)+
+                  Initial_immunity+I(Initial_immunity^2)+
+                  Incidence+I(Incidence^2)+
+                  In_migration+I(In_migration^2),
+                family =binomial(link = 'logit'),data=binData)
+summary(mdl.2)
+mdl.2$rank
+
+##############################
+## Model 3: quad + cubic     #
+##############################
+#include quadratic and cubic terms without interactions 
+mdl.3 <-glm(Observed~Population+I(Population^2)+I(Population^3)+
+                  Fecundity+I(Fecundity^2)+I(Fecundity^3)+
+                  Infectivity+I(Infectivity^2)+I(Infectivity^3)+
+                  Exposure_survival+I(Exposure_survival^2)+I(Exposure_survival^3)+
+                  Initial_immunity+I(Initial_immunity^2)+I(Initial_immunity^3)+
+                  Incidence+I(Incidence^2)+I(Incidence^3)+
+                  In_migration+I(In_migration^2)+I(In_migration^3),
+                family =binomial(link = 'logit'),data=binData)
+summary(mdl.3)
+mdl.3$rank
+
+########################################
+## Model 4: 1st order interactions     #
+########################################
+mdl.4 <-glm(Observed~(Population+
+                  Fecundity+
+                  Infectivity+
+                  Exposure_survival+
+                  Initial_immunity+
+                  Incidence+
+                  In_migration)^2,
+                family =binomial(link = 'logit'),data=binData)
+summary(mdl.4)
+mdl.4$rank
+
+#########################################################
+## Max model: quad + cubic + 1st order interactions     #
+#########################################################
+mdl.log.max <- glm(Observed~(poly(Population,3)+
+                               poly(Fecundity,3)+
+                               poly(Infectivity,3)+
+                               poly(Exposure_survival,3)+
+                               poly(Initial_immunity,3)+
+                               Incidence+I(Incidence^2)+I(Incidence^3)+
+                               poly(In_migration,3))^2,
+                   family =binomial(link = 'logit'),data=binData)
+summary(mdl.log.max)
+mdl.log.max$rank
+predict.glm(mdl.log.max,newdata = data.frame(
+  cbind(Population = 2500,Fecundity = 0.5,Infectivity =1.5,Exposure_survival=0.002,Initial_immunity=0.5,In_migration=0,Incidence=0.03)),
+  type="response")
+####### step model #################################
+
+####################################################
+#                                                  #
+#                  WARNING!!!                      #
+#                                                  #
+# Running the next line will take weeks to compute #                                                 
+# (alternatively you can load the results into     #
+# memory by running line 171 )                     #
+#                                                  #    
+####################################################
+ 
+mdl.log.step <- stepAIC(mdl.3,scope=.~.^2) #this line adds all first order interactions to mdl.log.2
+load(file = "mdl_log_step.rda") #this line loads the model object into memory which is the result of the stepAIC function
+
+binData$Predicted <- predict(mdl.log.step,binData,type="response")
+write.csv(binData, 'binDataObsPred.csv')
+
+summary(mdl.log.step) 
+mdl.log.step$rank
+
+
